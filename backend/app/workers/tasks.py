@@ -1,0 +1,107 @@
+import asyncio
+from app.workers.celery_app import celery_app
+from app.db.session import async_session_factory
+from app.models.repository import Repository
+from app.models.review import Review, ReviewComment
+from app.services.github_app import github_app_service
+from app.services.ai.orchestrator import ReviewOrchestrator
+from sqlalchemy import select
+
+from app.core.logging import logger
+from app.core.exceptions import AppError
+
+async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sha: str):
+    async with async_session_factory() as db:
+        logger.info("review_started", repo_id=repo_id, pr_number=pr_number, commit_sha=commit_sha)
+        result = await db.execute(select(Repository).where(Repository.id == repo_id))
+        repo = result.scalars().first()
+        if not repo:
+            logger.error("review_failed_repo_not_found", repo_id=repo_id)
+            return
+
+        # Create Review record
+        review = Review(
+            repository_id=repo.id,
+            commit_sha=commit_sha,
+            pr_number=pr_number,
+            status="running"
+        )
+        db.add(review)
+        await db.commit()
+        await db.refresh(review)
+
+        try:
+            # Fetch diff
+            diff = await github_app_service.get_repo_diff(
+                repo.installation_id,
+                repo.full_name,
+                base_sha,
+                commit_sha
+            )
+            
+            if not diff:
+                logger.error("review_failed_no_diff", review_id=review.id)
+                review.status = "failed"
+                review.summary = "Failed to fetch diff from GitHub."
+                await db.commit()
+                return
+
+            # Run Orchestrator
+            orchestrator = ReviewOrchestrator()
+            findings = await orchestrator.run_review(diff)
+            
+            # Store Findings
+            for finding in findings:
+                comment = ReviewComment(
+                    review_id=review.id,
+                    file_path=finding["file_path"],
+                    line_number=finding["line_number"],
+                    severity=finding["severity"],
+                    comment=finding["comment"]
+                )
+                db.add(comment)
+                
+                # Post to GitHub
+                try:
+                    await github_app_service.post_review_comment(
+                        repo.installation_id,
+                        repo.full_name,
+                        pr_number,
+                        commit_sha,
+                        finding["file_path"],
+                        finding["line_number"],
+                        finding["comment"]
+                    )
+                except Exception as e:
+                    logger.warning("github_post_comment_failed", error=str(e), review_id=review.id)
+
+            # Generate Summary
+            summary = await orchestrator.generate_summary(findings)
+            review.summary = summary
+            review.status = "completed"
+            
+            # Post Summary Comment
+            try:
+                await github_app_service.post_comment(
+                    repo.installation_id,
+                    repo.full_name,
+                    pr_number,
+                    f"### AI Code Review Summary\n\n{summary}"
+                )
+            except Exception as e:
+                logger.warning("github_post_summary_failed", error=str(e), review_id=review.id)
+            
+            await db.commit()
+            logger.info("review_completed", review_id=review.id)
+
+        except Exception as e:
+            logger.error("review_exception", error=str(e), review_id=review.id, exc_info=True)
+            review.status = "failed"
+            review.summary = f"An unexpected error occurred: {str(e)}"
+            await db.commit()
+            # We don't re-raise here to prevent Celery from retrying indefinitely 
+            # unless we want to implement specific retry logic.
+
+@celery_app.task
+def process_review_task(repo_id: int, pr_number: int, commit_sha: str, base_sha: str):
+    asyncio.run(_process_review(repo_id, pr_number, commit_sha, base_sha))
