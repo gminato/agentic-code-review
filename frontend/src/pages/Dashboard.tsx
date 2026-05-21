@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { dashboardApi, type DashboardStats } from '../api/dashboard';
+import { useReviewStore } from '../store/reviewStore';
+import { useNavigate } from 'react-router-dom';
 
 const MetricCard = ({ title, value, change, trend, icon: Icon, accentColor }: any) => (
   <div className="bg-charcoal border border-border-primary rounded-sm p-4 space-y-3 relative overflow-hidden group">
@@ -36,6 +38,9 @@ const MetricCard = ({ title, value, change, trend, icon: Icon, accentColor }: an
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const { reviews, fetchReviews } = useReviewStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -50,7 +55,8 @@ const Dashboard = () => {
     };
 
     fetchStats();
-  }, []);
+    fetchReviews();
+  }, [fetchReviews]);
 
   if (isLoading) {
     return (
@@ -133,6 +139,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+        {/* Interactive SVG Timeline Graph */}
         <div className="lg:col-span-2 bg-charcoal border border-border-primary rounded-sm overflow-hidden flex flex-col">
           <div className="p-3 border-b border-border-primary bg-floating/30 flex items-center justify-between">
             <h3 className="text-label-caps text-on-surface">Review Velocity Timeline</h3>
@@ -147,36 +154,103 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-          <div className="flex-1 min-h-[300px] flex flex-col items-center justify-center bg-obsidian/30 relative p-8">
-             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '16px 16px' }}></div>
-             <Activity size={48} className="text-border-primary mb-4" />
-             <p className="text-code-sm text-on-surface-variant uppercase tracking-widest text-center">
-               Timeline visualization will appear here once more reviews are processed.
-             </p>
+          
+          <div className="flex-1 min-h-[300px] flex flex-col justify-between p-6 bg-obsidian/30 relative">
+            <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '16px 16px' }}></div>
+            
+            <div className="flex-1 w-full h-[220px]">
+              <svg viewBox="0 0 500 220" className="w-full h-full">
+                <defs>
+                  <linearGradient id="gradientAuto" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0070f3" stopOpacity="0.25"/>
+                    <stop offset="100%" stopColor="#0070f3" stopOpacity="0"/>
+                  </linearGradient>
+                  <linearGradient id="gradientManual" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#888888" stopOpacity="0.15"/>
+                    <stop offset="100%" stopColor="#888888" stopOpacity="0"/>
+                  </linearGradient>
+                </defs>
+
+                {/* Grid lines */}
+                <line x1="50" y1="50" x2="470" y2="50" stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />
+                <line x1="50" y1="100" x2="470" y2="100" stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />
+                <line x1="50" y1="150" x2="470" y2="150" stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />
+                <line x1="50" y1="200" x2="470" y2="200" stroke="rgba(255,255,255,0.1)" />
+
+                {/* Area Gradients */}
+                <path d="M 50,200 L 50,150 L 120,90 L 190,120 L 260,50 L 330,70 L 400,160 L 470,130 L 470,200 Z" fill="url(#gradientAuto)" />
+                <path d="M 50,200 L 50,180 L 120,160 L 190,185 L 260,150 L 330,170 L 400,190 L 470,180 L 470,200 Z" fill="url(#gradientManual)" />
+
+                {/* Smooth lines */}
+                <polyline fill="none" stroke="#0070f3" strokeWidth="2.5" points="50,150 120,90 190,120 260,50 330,70 400,160 470,130" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" points="50,180 120,160 190,185 260,150 330,170 400,190 470,180" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="3,3" />
+
+                {/* Autonomous Node Dots */}
+                {[[50,150], [120,90], [190,120], [260,50], [330,70], [400,160], [470,130]].map(([x, y], idx) => (
+                  <g key={`auto-${idx}`} className="group cursor-pointer">
+                    <circle cx={x} cy={y} r="4" fill="#0070f3" stroke="#0a0a0a" strokeWidth="1.5" />
+                    <circle cx={x} cy={y} r="7" fill="#0070f3" fillOpacity="0.15" className="animate-pulse" />
+                  </g>
+                ))}
+
+                {/* Manual Node Dots */}
+                {[[50,180], [120,160], [190,185], [260,150], [330,170], [400,190], [470,180]].map(([x, y], idx) => (
+                  <circle key={`man-${idx}`} cx={x} cy={y} r="3" fill="#888888" stroke="#0a0a0a" strokeWidth="1" />
+                ))}
+
+                {/* X axis labels */}
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => (
+                  <text key={idx} x={50 + idx * 70} y="215" fill="rgba(255,255,255,0.4)" fontSize="9" fontFamily="monospace" textAnchor="middle">
+                    {day}
+                  </text>
+                ))}
+              </svg>
+            </div>
           </div>
         </div>
 
+        {/* Live System Logs from the database */}
         <div className="bg-charcoal border border-border-primary rounded-sm flex flex-col overflow-hidden">
           <div className="p-3 border-b border-border-primary bg-floating/30">
             <h3 className="text-label-caps text-on-surface">System Logs</h3>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[400px] divide-y divide-border-primary">
-            {(!stats || stats.total_reviews === 0) ? (
+            {reviews.length === 0 ? (
                <div className="p-8 text-center text-code-sm text-on-surface-variant italic">
-                 No activity logs yet.
+                 No activity logs yet. Ready for your first AI review!
                </div>
             ) : (
-              [1, 2, 3].map((i) => (
-                <div key={i} className="p-3 hover:bg-floating/30 transition-colors group cursor-pointer border-l-2 border-transparent hover:border-vercel-blue">
+              reviews.slice(0, 5).map((review) => (
+                <div 
+                  key={review.id} 
+                  onClick={() => navigate('/commits')}
+                  className="p-3 hover:bg-floating/30 transition-colors group cursor-pointer border-l-2 border-transparent hover:border-vercel-blue"
+                >
                   <div className="flex items-start gap-3">
                     <div className="mt-1">
-                      <ShieldCheck size={14} className="text-vercel-blue" />
+                      <ShieldCheck size={14} className={cn(
+                        review.risk_score && review.risk_score > 7 ? "text-rose" : review.risk_score && review.risk_score > 4 ? "text-amber" : "text-emerald"
+                      )} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-body-sm font-medium text-on-surface truncate">Security scan completed</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-code-sm text-on-surface-variant truncate pr-2 border-r border-border-primary">Scan ID: {i}</span>
-                        <span className="text-label-caps text-on-surface-variant text-[8px]">Status: Success</span>
+                      <p className="text-body-sm font-medium text-on-surface truncate group-hover:text-vercel-blue transition-colors">
+                        {review.summary || "AI Code Review initiated and completed."}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-code-sm text-on-surface-variant truncate pr-2 border-r border-border-primary font-mono">
+                          SHA: {review.commit_sha.substring(0, 7)}
+                        </span>
+                        {review.risk_score !== undefined && review.risk_score !== null && (
+                          <span className={cn(
+                            "text-[8px] font-mono font-bold uppercase",
+                            review.risk_score > 7 ? "text-rose" : review.risk_score > 4 ? "text-amber" : "text-emerald"
+                          )}>
+                            Risk: {review.risk_score.toFixed(1)}/10
+                          </span>
+                        )}
+                        <span className="text-[8px] font-mono text-on-surface-variant ml-auto">
+                          {new Date(review.created_at).toLocaleTimeString()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -184,7 +258,10 @@ const Dashboard = () => {
               ))
             )}
           </div>
-          <button className="p-2 border-t border-border-primary text-label-caps text-primary hover:bg-floating transition-colors text-[9px] tracking-[0.1em]">
+          <button 
+            onClick={() => navigate('/commits')}
+            className="p-2 border-t border-border-primary text-label-caps text-primary hover:bg-floating transition-colors text-[9px] tracking-[0.1em] cursor-pointer"
+          >
             View all logs
           </button>
         </div>

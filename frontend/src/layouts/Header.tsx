@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Bell, Command, ChevronDown, GitBranch, Plus, ExternalLink, Loader2, GitCommit, Folder } from 'lucide-react';
 import { useRepositoryStore } from '../store/repositoryStore';
+import { useNotificationStore } from '../store/notificationStore';
 import { cn } from '../utils/cn';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -16,10 +17,14 @@ export const Header = () => {
     importRepository,
     isAvailableLoading
   } = useRepositoryStore();
+
+  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
   
   const [isRepoOpen, setIsRepoOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsDropdownRef = useRef<HTMLDivElement>(null);
 
   // Search State and Refs
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,9 +37,14 @@ export const Header = () => {
 
   useEffect(() => {
     fetchRepositories();
-  }, [fetchRepositories]);
+    fetchNotifications();
+    
+    // Poll for notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchRepositories, fetchNotifications]);
 
-  // Handle outside clicks for both repo dropdown and search dropdown
+  // Handle outside clicks for repo dropdown, search dropdown and notifications dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -42,6 +52,9 @@ export const Header = () => {
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsSearchOpen(false);
+      }
+      if (notificationsDropdownRef.current && !notificationsDropdownRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -272,10 +285,87 @@ export const Header = () => {
           )}
         </div>
 
-        <button className="p-2 rounded hover:bg-floating text-on-surface-variant hover:text-on-surface transition-colors relative">
-          <Bell size={16} />
-          <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-vercel-blue rounded-full border border-charcoal"></span>
-        </button>
+        {/* Live Notifications Bell & Dropdown */}
+        <div className="relative" ref={notificationsDropdownRef}>
+          <button 
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className={cn(
+              "p-2 rounded hover:bg-floating text-on-surface-variant hover:text-on-surface transition-colors relative cursor-pointer",
+              isNotificationsOpen && "bg-floating text-on-surface"
+            )}
+          >
+            <Bell size={16} />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 min-w-[12px] h-[12px] px-0.5 rounded-full bg-vercel-blue text-[7px] font-bold text-white flex items-center justify-center border border-charcoal">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {isNotificationsOpen && (
+            <div className="absolute top-full mt-1 right-0 w-80 bg-charcoal border border-border-primary rounded-sm shadow-xl z-50 overflow-hidden flex flex-col">
+              <div className="p-3 border-b border-border-primary bg-obsidian/50 flex items-center justify-between">
+                <span className="text-label-caps text-[9px] font-bold text-on-surface-variant uppercase tracking-wider">
+                  Notifications
+                </span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllAsRead()}
+                    className="text-[9px] font-mono text-vercel-blue hover:underline cursor-pointer font-semibold uppercase"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              
+              <div className="max-h-80 overflow-y-auto divide-y divide-border-primary/45">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center text-body-sm text-on-surface-variant italic">
+                    No notifications yet
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      onClick={async () => {
+                        await markAsRead(notif.id);
+                        setIsNotificationsOpen(false);
+                        if (notif.link) {
+                          navigate(notif.link);
+                        }
+                      }}
+                      className={cn(
+                        "p-3 text-left transition-colors cursor-pointer relative hover:bg-floating/30 flex items-start gap-2.5",
+                        !notif.is_read && "bg-vercel-blue/5 border-l-2 border-vercel-blue"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={cn(
+                            "text-body-sm font-semibold truncate block",
+                            notif.is_read ? "text-on-surface-variant" : "text-on-surface"
+                          )}>
+                            {notif.title}
+                          </span>
+                          <span className="text-[8px] font-mono text-on-surface-variant shrink-0 mt-0.5">
+                            {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant leading-relaxed line-clamp-2 mt-0.5">
+                          {notif.message}
+                        </p>
+                      </div>
+                      
+                      {!notif.is_read && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-vercel-blue mt-1.5 shrink-0 animate-pulse"></div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Simple Import Modal */}
