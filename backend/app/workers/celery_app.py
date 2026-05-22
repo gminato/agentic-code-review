@@ -8,7 +8,7 @@ celery_app = Celery(
 )
 
 celery_app.conf.task_routes = {
-    "app.workers.tasks.process_review_task": "main-queue",
+    "app.workers.tasks.process_review_task": "celery",
 }
 
 celery_app.autodiscover_tasks(["app.workers"])

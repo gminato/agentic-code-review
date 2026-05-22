@@ -6,6 +6,7 @@ from app.models.review import Review, ReviewComment
 from app.services.github_app import github_app_service
 from app.services.ai.orchestrator import ReviewOrchestrator
 from sqlalchemy import select
+import app.db.base  # Ensures all models are registered for SQLAlchemy relationships
 
 from app.core.logging import logger
 from app.core.exceptions import AppError

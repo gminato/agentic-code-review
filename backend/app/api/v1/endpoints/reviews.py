@@ -29,15 +29,16 @@ async def run_review(
         repository_id=review_in.repository_id,
         commit_sha=review_in.commit_sha,
         pr_number=review_in.pr_number,
-        status="pending"
+        status="pending",
+        thinking_log=[]
     )
     db.add(review)
     await db.commit()
-    await db.refresh(review)
     
-    # Initialize empty relationships to prevent lazy-loading (MissingGreenlet) exceptions during serialization
-    review.comments = []
-    review.thinking_log = []
+    # Load review with comments relationship eager loaded to prevent lazy load exceptions during serialization
+    stmt = select(ReviewModel).where(ReviewModel.id == review.id).options(selectinload(ReviewModel.comments))
+    result = await db.execute(stmt)
+    review = result.scalars().one()
 
     # Trigger background task
     process_review_task.delay(
