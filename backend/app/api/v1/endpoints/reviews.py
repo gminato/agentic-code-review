@@ -34,6 +34,10 @@ async def run_review(
     db.add(review)
     await db.commit()
     await db.refresh(review)
+    
+    # Initialize empty relationships to prevent lazy-loading (MissingGreenlet) exceptions during serialization
+    review.comments = []
+    review.thinking_log = []
 
     # Trigger background task
     process_review_task.delay(
