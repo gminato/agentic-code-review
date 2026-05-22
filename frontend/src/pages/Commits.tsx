@@ -62,6 +62,16 @@ const Commits = () => {
   useEffect(() => {
     if (!activeReviewId) return;
 
+    // Check if the review is already in a terminal state
+    const existingReview = reviews.find(r => r.id === activeReviewId);
+    if (existingReview && (existingReview.status === 'completed' || existingReview.status === 'failed')) {
+      setThinkingLog(existingReview.thinking_log || []);
+      setStreamStatus(existingReview.status);
+      setStreamSummary(existingReview.summary || '');
+      setStreamRiskScore(existingReview.risk_score !== undefined ? existingReview.risk_score : null);
+      return; // Do not connect to SSE for already-finished reviews
+    }
+
     setStreamStatus('connecting');
     const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
     const streamURL = `${baseURL}/reviews/${activeReviewId}/stream${token ? `?token=${token}` : ''}`;
@@ -74,6 +84,7 @@ const Commits = () => {
         if (data.error) {
           toast.error(`Stream error: ${data.error}`);
           setStreamStatus('failed');
+          setStreamSummary(data.error);
           eventSource.close();
           return;
         }
@@ -85,13 +96,9 @@ const Commits = () => {
         
         if (data.status === 'completed' || data.status === 'failed') {
           eventSource.close();
-          // Reload history after a delay so they can appreciate the completion state
-          setTimeout(() => {
-            setActiveReviewId(null);
-            if (selectedRepositoryId) {
-              fetchReviews(selectedRepositoryId);
-            }
-          }, 3500);
+          if (selectedRepositoryId) {
+            fetchReviews(selectedRepositoryId);
+          }
         }
       } catch (err) {
         console.error('Failed to parse event data:', err);
@@ -101,13 +108,14 @@ const Commits = () => {
     eventSource.onerror = (err) => {
       console.error('EventSource connection error:', err);
       setStreamStatus('failed');
+      setStreamSummary('Lost connection to stream server.');
       eventSource.close();
     };
     
     return () => {
       eventSource.close();
     };
-  }, [activeReviewId, token, fetchReviews, selectedRepositoryId]);
+  }, [activeReviewId, token, fetchReviews, selectedRepositoryId, reviews]);
 
   // Auto-scroll logs to bottom
   useEffect(() => {
@@ -247,7 +255,20 @@ const Commits = () => {
                     {reviews
                       .filter(r => r.status === 'pending' || r.status === 'running')
                       .map(review => (
-                        <div key={review.id} className="bg-charcoal/60 border border-amber/20 hover:border-amber/40 rounded-sm p-4 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
+                        <div 
+                          key={review.id} 
+                          onClick={() => {
+                            setActiveReviewId(review.id);
+                            setThinkingLog(review.thinking_log || []);
+                            setStreamStatus(review.status);
+                            setStreamSummary(review.summary || '');
+                            setStreamRiskScore(review.risk_score !== undefined ? review.risk_score : null);
+                          }}
+                          className={cn(
+                            "bg-charcoal/60 border hover:border-amber/40 rounded-sm p-4 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden cursor-pointer",
+                            activeReviewId === review.id ? "border-amber bg-amber/5 ring-1 ring-amber/35" : "border-amber/20"
+                          )}
+                        >
                           <div className="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-amber to-amber/30 animate-pulse" />
                           <div className="space-y-1 min-w-0 pl-1">
                             <div className="flex items-center gap-3">
@@ -298,7 +319,24 @@ const Commits = () => {
                     {reviews
                       .filter(r => r.status === 'completed' || r.status === 'failed')
                       .map(review => (
-                        <div key={review.id} className="bg-charcoal border border-border-primary rounded-sm p-4 hover:border-border-primary/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div 
+                          key={review.id} 
+                          onClick={() => {
+                            setActiveReviewId(review.id);
+                            setThinkingLog(review.thinking_log || []);
+                            setStreamStatus(review.status);
+                            setStreamSummary(review.summary || '');
+                            setStreamRiskScore(review.risk_score !== undefined ? review.risk_score : null);
+                          }}
+                          className={cn(
+                            "bg-charcoal border rounded-sm p-4 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer",
+                            activeReviewId === review.id 
+                              ? (review.status === 'failed' 
+                                  ? "border-rose bg-rose/5 ring-1 ring-rose/35" 
+                                  : "border-emerald bg-emerald/5 ring-1 ring-emerald/35")
+                              : "border-border-primary hover:border-border-primary/80 hover:bg-charcoal/80"
+                          )}
+                        >
                           <div className="space-y-1 min-w-0">
                             <div className="flex items-center gap-3">
                               <span className="font-mono text-xs font-semibold text-primary bg-obsidian border border-border-primary px-2 py-0.5 rounded-sm">
@@ -360,29 +398,40 @@ const Commits = () => {
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-vercel-blue/5 rounded-full blur-3xl pointer-events-none" />
 
               <div className="flex items-center justify-between border-b border-border-primary pb-3">
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 flex-1 min-w-0">
                   <h3 className="text-headline flex items-center gap-2">
                     {streamStatus === 'completed' ? (
-                      <CheckCircle2 size={16} className="text-emerald animate-bounce" />
+                      <CheckCircle2 size={16} className="text-emerald" />
                     ) : streamStatus === 'failed' ? (
                       <AlertTriangle size={16} className="text-rose" />
                     ) : (
                       <Loader2 size={16} className="text-linear-purple animate-spin" />
                     )}
-                    <span>AI Review Pipeline</span>
+                    <span className="truncate">AI Review Pipeline</span>
                   </h3>
                   <p className="text-[10px] text-on-surface-variant font-mono tracking-tight">
                     REVIEW ID: #{activeReviewId}
                   </p>
                 </div>
-                <span className={cn(
-                  "text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border",
-                  streamStatus === 'completed' && "bg-emerald/10 border-emerald/20 text-emerald",
-                  streamStatus === 'failed' && "bg-rose/10 border-rose/20 text-rose",
-                  streamStatus !== 'completed' && streamStatus !== 'failed' && "bg-linear-purple/10 border-linear-purple/20 text-linear-purple animate-pulse"
-                )}>
-                  {streamStatus}
-                </span>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <span className={cn(
+                    "text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                    streamStatus === 'completed' && "bg-emerald/10 border-emerald/20 text-emerald",
+                    streamStatus === 'failed' && "bg-rose/10 border-rose/20 text-rose",
+                    streamStatus !== 'completed' && streamStatus !== 'failed' && "bg-linear-purple/10 border-linear-purple/20 text-linear-purple animate-pulse"
+                  )}>
+                    {streamStatus}
+                  </span>
+                  <button 
+                    onClick={() => setActiveReviewId(null)}
+                    className="p-1 text-on-surface-variant hover:text-on-surface bg-charcoal hover:bg-charcoal/80 border border-border-primary rounded-sm transition-all"
+                    title="Close Details and Go Back to Manual Trigger"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Dynamic Progress Bar */}
@@ -466,14 +515,31 @@ const Commits = () => {
                     </div>
                   </div>
                   {streamSummary && (
-                    <p className="text-[10.5px] font-sans text-on-surface/90 line-clamp-3 italic leading-relaxed border-l-2 border-emerald pl-2 py-0.5">
+                    <p className="text-[10.5px] font-sans text-on-surface/90 italic leading-relaxed border-l-2 border-emerald pl-2 py-0.5">
                       "{streamSummary}"
                     </p>
                   )}
-                  <div className="flex items-center gap-1 text-[9px] font-mono text-on-surface-variant pt-1">
-                    <span>Reloading timeline</span>
-                    <span className="animate-pulse">...</span>
+                </div>
+              )}
+
+              {/* Robust Failed / Aborted State Detail Card */}
+              {streamStatus === 'failed' && (
+                <div className="bg-rose/5 border border-rose/25 rounded-sm p-3.5 space-y-2.5 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-rose">Review Failed / Aborted</h4>
+                      <p className="text-[10px] text-on-surface-variant">The AI agent pipeline did not complete.</p>
+                    </div>
+                    <AlertTriangle size={18} className="text-rose animate-bounce shrink-0" />
                   </div>
+                  {streamSummary && (
+                    <div className="text-[11px] font-mono text-rose-300 leading-relaxed border-l-2 border-rose pl-2 py-1 bg-rose/10 rounded-r-sm p-2 overflow-x-auto select-text break-words">
+                      {streamSummary}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-on-surface-variant italic leading-normal">
+                    Check the Live Agent Reasonings log above to locate precisely where the pipeline aborted and what corrections are required.
+                  </p>
                 </div>
               )}
             </div>
