@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Repositories from './pages/Repositories';
 import Reviews from './pages/Reviews';
 import PullRequests from './pages/PullRequests';
+import Diffs from './pages/Diffs';
 import Agents from './pages/Agents';
 import Cron from './pages/Cron';
 import Settings from './pages/Settings';
@@ -44,6 +45,7 @@ function App() {
         <Route path="/repositories" element={<ProtectedRoute><Repositories /></ProtectedRoute>} />
         <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
         <Route path="/pull-requests" element={<ProtectedRoute><PullRequests /></ProtectedRoute>} />
+        <Route path="/diff" element={<ProtectedRoute><Diffs /></ProtectedRoute>} />
         <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
         <Route path="/cron" element={<ProtectedRoute><Cron /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

@@ -113,3 +113,18 @@ async def get_repository_pull_requests(
     # Proxy pull requests from GitHub
     prs = await github_app_service.get_pull_requests(repo.installation_id, repo.full_name)
     return prs
+
+@router.get("/{repo_id}/pulls/{pr_number}/files")
+async def get_pull_request_files(
+    repo_id: int,
+    pr_number: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    result = await db.execute(select(RepoModel).where(RepoModel.id == repo_id))
+    repo = result.scalars().first()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    
+    files = await github_app_service.get_pull_request_files(repo.installation_id, repo.full_name, pr_number)
+    return files

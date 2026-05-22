@@ -4,6 +4,7 @@ import {
   LayoutDashboard, 
   GitCommit, 
   GitPullRequest, 
+  Eye,
   Bot, 
   Clock, 
   Settings, 
@@ -84,6 +85,7 @@ export const Sidebar = () => {
         <SidebarItem to='/dashboard' icon={<LayoutDashboard size={18} />} label='Dashboard' collapsed={collapsed} />
         <SidebarItem to='/reviews' icon={<GitCommit size={18} />} label='Review' collapsed={collapsed} />
         <SidebarItem to='/pull-requests' icon={<GitPullRequest size={18} />} label='Pull Requests' collapsed={collapsed} />
+        <SidebarItem to='/diff' icon={<Eye size={18} />} label='Diff' collapsed={collapsed} />
         <SidebarItem to='/agents' icon={<Bot size={18} />} label='Agents' collapsed={collapsed} />
         <SidebarItem to='/cron' icon={<Clock size={18} />} label='Cron Jobs' collapsed={collapsed} />
       </div>

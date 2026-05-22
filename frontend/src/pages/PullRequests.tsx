@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRepositoryStore } from '../store/repositoryStore';
 import { useReviewStore } from '../store/reviewStore';
-import { GitPullRequest, RefreshCcw, ExternalLink, Play } from 'lucide-react';
+import { GitPullRequest, RefreshCcw, ExternalLink, Play, Eye } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { toast } from 'sonner';
 
 const PullRequests = () => {
+  const navigate = useNavigate();
   const { selectedRepositoryId, pullRequests, isPullRequestsLoading, fetchPullRequests, repositories } = useRepositoryStore();
   const { runReview, isLoading: isReviewStarting } = useReviewStore();
 
@@ -113,6 +115,13 @@ const PullRequests = () => {
                     />
                   )}
                 </div>
+                <button 
+                  onClick={() => navigate('/diff', { state: { prNumber: pr.number } })}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-charcoal border border-border-primary hover:border-vercel-blue text-on-surface-variant hover:text-on-surface rounded-sm text-[10px] font-bold uppercase transition-all cursor-pointer select-none"
+                >
+                  <Eye size={11} />
+                  <span>View Diff</span>
+                </button>
                 <button 
                   onClick={() => handleRunReview(pr)}
                   disabled={isReviewStarting}

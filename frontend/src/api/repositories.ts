@@ -28,4 +28,6 @@ export const repositoriesApi = {
     apiClient.post<Repository>('/repositories/import', data),
   getPullRequests: (id: number) => 
     apiClient.get<any[]>(`/repositories/${id}/pull-requests`),
+  getPullRequestFiles: (id: number, prNumber: number) => 
+    apiClient.get<any[]>(`/repositories/${id}/pulls/${prNumber}/files`),
 };

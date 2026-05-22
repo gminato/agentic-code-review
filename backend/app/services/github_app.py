@@ -83,6 +83,21 @@ class GitHubAppService:
                 return response.json()
             return []
 
+    async def get_pull_request_files(self, installation_id: int, repo_full_name: str, pr_number: int) -> list:
+        token = await self.get_installation_token(installation_id)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.github.com/repos/{repo_full_name}/pulls/{pr_number}/files",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": "Agentic-Code-Review",
+                },
+            )
+            if response.status_code == 200:
+                return response.json()
+            return []
+
     async def get_user_installations(self, user_token: str) -> list:
         async with httpx.AsyncClient() as client:
             response = await client.get(
