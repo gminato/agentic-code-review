@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.core.exceptions import AIProviderError
 
 class OpenAIProvider(AIProvider):
-    def __init__(self, api_key: str, model: str = "gpt-4-turbo-preview"):
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini"):
         self.client = openai.AsyncOpenAI(api_key=api_key)
         self.model = model
 

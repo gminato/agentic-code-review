@@ -4,7 +4,7 @@ from app.services.ai.openai_provider import OpenAIProvider
 from app.core.config import settings
 
 class OpenRouterProvider(OpenAIProvider):
-    def __init__(self, api_key: str, model: str = "openai/gpt-4-turbo"):
+    def __init__(self, api_key: str, model: str = "openai/gpt-4o-mini"):
         # OpenRouter is OpenAI-compatible, but needs a different base URL
         self.client = openai.AsyncOpenAI(
             api_key=api_key,

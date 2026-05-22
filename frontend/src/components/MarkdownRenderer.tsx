@@ -94,8 +94,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
         }
       }
       
-      tokens.push(text.substring(i, nextSpecial));
-      i = nextSpecial;
+      if (nextSpecial === i) {
+        // We are sitting on a special character that was not parsed (e.g., unclosed '*' or '[')
+        // Consume this single character as plain text to avoid an infinite loop
+        tokens.push(text[i]);
+        i++;
+      } else {
+        tokens.push(text.substring(i, nextSpecial));
+        i = nextSpecial;
+      }
     }
     
     return tokens;
