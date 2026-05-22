@@ -1,6 +1,6 @@
 import asyncio
 from app.workers.celery_app import celery_app
-from app.db.session import async_session_factory
+from app.db.session import async_session_factory, engine
 from app.models.repository import Repository
 from app.models.review import Review, ReviewComment
 from app.services.github_app import github_app_service
@@ -12,6 +12,8 @@ from app.core.logging import logger
 from app.core.exceptions import AppError
 
 async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sha: str):
+    # Dispose the connection pool to ensure all database connections bind to the current event loop
+    await engine.dispose()
     review_id = None
     try:
         async with async_session_factory() as db:

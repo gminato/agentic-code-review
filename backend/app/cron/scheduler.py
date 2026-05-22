@@ -1,6 +1,6 @@
 from app.workers.celery_app import celery_app
 from celery.schedules import crontab
-from app.db.session import async_session_factory
+from app.db.session import async_session_factory, engine
 from app.models.cron_job import CronJob
 from app.workers.tasks import process_review_task
 from sqlalchemy import select
@@ -16,6 +16,8 @@ def check_and_schedule_cron_jobs():
     asyncio.run(_check_and_schedule_cron_jobs())
 
 async def _check_and_schedule_cron_jobs():
+    # Dispose connection pool to ensure all database connections bind to the current event loop
+    await engine.dispose()
     async with async_session_factory() as db:
         result = await db.execute(select(CronJob).where(CronJob.enabled == True))
         jobs = result.scalars().all()
