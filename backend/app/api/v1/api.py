@@ -9,7 +9,8 @@ from app.api.v1.endpoints import (
     dashboard, 
     search, 
     settings, 
-    notifications
+    notifications,
+    stream
 )
 
 api_router = APIRouter()
@@ -23,3 +24,4 @@ api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboar
 api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(stream.router, tags=["stream"])

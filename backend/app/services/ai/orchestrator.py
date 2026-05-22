@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 import json
 from app.services.ai.base import AIProvider
 from app.services.ai.agents import ReviewAgent
@@ -23,21 +23,49 @@ class ReviewOrchestrator:
             ReviewAgent(self.provider, "Clean Code", "Detect code complexity, bad naming, and duplication.")
         ]
 
-    async def run_review(self, diff: str) -> List[Dict[str, Any]]:
+    async def run_review(self, diff: str, on_thinking: Optional[Callable] = None) -> List[Dict[str, Any]]:
         all_findings = []
-        # In a more advanced implementation, these could run in parallel
         for agent in self.agents:
+            if on_thinking:
+                await on_thinking(
+                    agent.name,
+                    "running",
+                    f"Analyzing code to {agent.role_description.lower()}"
+                )
+            
             findings = await agent.review_diff(diff)
             for finding in findings:
                 finding["agent_name"] = agent.name
             all_findings.extend(findings)
+            
+            if on_thinking:
+                await on_thinking(
+                    agent.name,
+                    "completed",
+                    f"Completed analysis. Found {len(findings)} issues.",
+                    len(findings)
+                )
         return all_findings
 
-    async def generate_summary(self, findings: List[Dict[str, Any]]) -> str:
+    async def generate_summary(self, findings: List[Dict[str, Any]], on_thinking: Optional[Callable] = None) -> str:
+        if on_thinking:
+            await on_thinking(
+                "Summary",
+                "running",
+                "Synthesizing findings to generate overall risk score and summary..."
+            )
+            
         if not findings:
-            return "No significant issues found. Great job!"
-        
-        findings_json = json.dumps(findings, indent=2)
-        prompt = f"Summarize the following code review findings and provide an overall risk score (0-100):\n\n{findings_json}"
-        summary = await self.provider.generate_response(prompt, system_prompt="You are a senior lead engineer summarizing code review findings.")
+            summary = "No significant issues found. Great job!"
+        else:
+            findings_json = json.dumps(findings, indent=2)
+            prompt = f"Summarize the following code review findings and provide an overall risk score (0-100):\n\n{findings_json}"
+            summary = await self.provider.generate_response(prompt, system_prompt="You are a senior lead engineer summarizing code review findings.")
+            
+        if on_thinking:
+            await on_thinking(
+                "Summary",
+                "completed",
+                "Generated overall risk assessment and summary."
+            )
         return summary

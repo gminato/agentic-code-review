@@ -13,6 +13,7 @@ class Review(Base):
     status: Mapped[str] = mapped_column(String, default="pending")  # pending, running, completed, failed
     summary: Mapped[str] = mapped_column(String, nullable=True)
     risk_score: Mapped[float] = mapped_column(Float, nullable=True)
+    thinking_log: Mapped[list] = mapped_column(JSON, nullable=True)
 
     repository: Mapped["Repository"] = relationship("Repository", back_populates="reviews")
     comments: Mapped[List["ReviewComment"]] = relationship("ReviewComment", back_populates="review")

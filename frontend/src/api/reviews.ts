@@ -9,6 +9,14 @@ export interface ReviewComment {
   comment: string;
 }
 
+export interface ThinkingStep {
+  agent: string;
+  status: string;
+  message: string;
+  findings_count?: number;
+  timestamp: string;
+}
+
 export interface Review {
   id: number;
   repository_id: number;
@@ -19,6 +27,7 @@ export interface Review {
   risk_score?: number;
   created_at: string;
   comments: ReviewComment[];
+  thinking_log?: ThinkingStep[];
 }
 
 export const reviewsApi = {

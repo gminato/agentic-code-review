@@ -28,6 +28,7 @@ class ReviewAgent(AIAgent):
             ]
         }}
         """
+        self.role_description = role_description
         super().__init__(provider, name, prompt_template)
 
     async def review_diff(self, diff: str) -> List[Dict[str, Any]]:

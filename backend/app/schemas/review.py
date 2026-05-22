@@ -21,6 +21,7 @@ class ReviewBase(BaseModel):
     status: str
     summary: Optional[str] = None
     risk_score: Optional[float] = None
+    thinking_log: Optional[List[dict]] = None
 
 class Review(ReviewBase):
     id: int

@@ -8,7 +8,7 @@ interface ReviewState {
   error: string | null;
   fetchReviews: (repositoryId?: number) => Promise<void>;
   fetchReview: (id: number) => Promise<void>;
-  runReview: (data: { repository_id: number; commit_sha: string; base_sha: string; pr_number?: number }) => Promise<void>;
+  runReview: (data: { repository_id: number; commit_sha: string; base_sha: string; pr_number?: number }) => Promise<Review>;
 }
 
 export const useReviewStore = create<ReviewState>((set) => ({
@@ -38,12 +38,15 @@ export const useReviewStore = create<ReviewState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await reviewsApi.run(data);
+      const newReview = response.data;
       set((state) => ({ 
-        reviews: [response.data, ...state.reviews],
+        reviews: [newReview, ...state.reviews],
         isLoading: false 
       }));
+      return newReview;
     } catch (error) {
       set({ error: 'Failed to trigger review', isLoading: false });
+      throw error;
     }
   },
 }));
