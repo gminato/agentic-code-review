@@ -11,9 +11,15 @@ class ReviewOrchestrator:
         if provider:
             self.provider = provider
         elif settings.OPENROUTER_API_KEY:
-            self.provider = OpenRouterProvider(api_key=settings.OPENROUTER_API_KEY)
+            self.provider = OpenRouterProvider(
+                api_key=settings.OPENROUTER_API_KEY,
+                model=settings.OPENROUTER_MODEL
+            )
         else:
-            self.provider = OpenAIProvider(api_key=settings.OPENAI_API_KEY or "")
+            self.provider = OpenAIProvider(
+                api_key=settings.OPENAI_API_KEY or "",
+                model=settings.OPENAI_MODEL
+            )
         
         self.agents = [
             ReviewAgent(self.provider, "Security", "Detect SQL injection, XSS, hardcoded secrets, SSRF, and other security vulnerabilities."),
