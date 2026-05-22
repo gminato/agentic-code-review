@@ -48,13 +48,14 @@ async def stream_review_thinking(
                         )
                         comments_count = count_result.scalar() or 0
 
-                    yield f"data: {json.dumps({
+                    data_payload = {
                         'status': status,
                         'thinking_log': log,
                         'summary': summary,
                         'risk_score': risk_score,
                         'comments_count': comments_count
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(data_payload)}\n\n"
                     
                     if status in ["completed", "failed"]:
                         break
