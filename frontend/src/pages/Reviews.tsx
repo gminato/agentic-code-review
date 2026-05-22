@@ -16,17 +16,30 @@ import {
   CheckSquare, 
   Loader2, 
   CheckCircle2, 
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { toast } from 'sonner';
 import type { ThinkingStep } from '../api/reviews';
 
-const Commits = () => {
+const Reviews = () => {
   const { selectedRepositoryId, repositories } = useRepositoryStore();
-  const { reviews, fetchReviews, isLoading, runReview } = useReviewStore();
+  const { reviews, fetchReviews, isLoading, runReview, deleteReview } = useReviewStore();
   const selectedRepo = repositories.find(r => r.id === selectedRepositoryId);
   const token = useAuthStore(state => state.token);
+
+  const handleDeleteReview = async (id: number) => {
+    try {
+      await deleteReview(id);
+      toast.success('Review successfully cancelled/removed');
+      if (activeReviewId === id) {
+        setActiveReviewId(null);
+      }
+    } catch (err) {
+      toast.error('Failed to cancel review');
+    }
+  };
 
   const [commitSha, setCommitSha] = useState('');
   const [baseSha, setBaseSha] = useState('');
@@ -199,7 +212,7 @@ const Commits = () => {
       <div className="h-[60vh] flex flex-col items-center justify-center text-center">
         <Activity size={48} className="text-border-primary mb-4" />
         <h3 className="text-headline">No repository selected</h3>
-        <p className="text-body-sm text-on-surface-variant mt-1">Please select a repository from the top-right menu to view reviewed commits.</p>
+        <p className="text-body-sm text-on-surface-variant mt-1">Please select a repository from the top-right menu to view reviews.</p>
       </div>
     );
   }
@@ -208,7 +221,7 @@ const Commits = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-display">Commit AI Reviews</h1>
+          <h1 className="text-display">AI Code Reviews</h1>
           <p className="text-body-sm text-on-surface-variant mt-1 font-mono tracking-tight uppercase">
             Repository: <span className="text-primary font-bold">{selectedRepo?.full_name}</span>
           </p>
@@ -224,8 +237,8 @@ const Commits = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter items-start">
-        {/* Left Side: Commit Timeline */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* Left Side: Review Queues */}
+        <div className="lg:col-span-2 space-y-6">
           <h3 className="text-label-caps text-on-surface-variant tracking-wider">Review History</h3>
           
           {isLoading ? (
@@ -237,12 +250,12 @@ const Commits = () => {
           ) : reviews.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 bg-charcoal/30 border border-dashed border-border-primary rounded-sm text-center">
               <ClipboardList size={40} className="text-border-primary mb-3" />
-              <p className="text-body-md font-semibold">No commits reviewed yet</p>
+              <p className="text-body-md font-semibold">No reviews run yet</p>
               <p className="text-body-sm text-on-surface-variant mt-1 max-w-sm">Trigger your first review using the manual panel on the right or via your GitHub pull requests.</p>
             </div>
           ) : (
             <div className="space-y-6 animate-fadeIn">
-              {/* Queue 1: Pending Queue */}
+              {/* State 1: Pending & Active Queue */}
               {reviews.filter(r => r.status === 'pending' || r.status === 'running').length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 border-b border-border-primary pb-2">
@@ -285,7 +298,7 @@ const Commits = () => {
                               </span>
                             </div>
                             <p className="text-body-sm font-sans font-medium text-on-surface line-clamp-2 mt-1 italic text-on-surface-variant">
-                              {review.status === 'running' ? "Running active AI assessments and generating real-time logs..." : "Queued. Waiting for available agent worker processes..."}
+                              {review.status === 'running' ? "Running active AI assessments..." : "Queued. Waiting for available agent worker processes..."}
                             </p>
                             <div className="text-[10px] text-on-surface-variant font-mono">
                               Triggered: {new Date(review.created_at).toLocaleString()}
@@ -293,6 +306,18 @@ const Commits = () => {
                           </div>
 
                           <div className="flex items-center gap-4 shrink-0 border-l border-border-primary pl-4">
+                            {(review.status === 'pending' || review.status === 'running') && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteReview(review.id);
+                                }}
+                                className="p-1.5 text-on-surface-variant hover:text-rose hover:bg-rose/10 border border-border-primary hover:border-rose/25 rounded-sm transition-all cursor-pointer shrink-0 mr-1"
+                                title="Remove from pending state"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                             <div className="text-center">
                               <Loader2 size={16} className="text-amber animate-spin mx-auto" />
                               <span className="text-[9px] font-mono block mt-1.5 text-on-surface-variant uppercase tracking-wider">Processing</span>
@@ -304,20 +329,20 @@ const Commits = () => {
                 </div>
               )}
 
-              {/* Queue 2: Completed Queue */}
+              {/* State 2: Completed Queue */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 border-b border-border-primary pb-2">
                   <span className="w-2 h-2 bg-emerald rounded-full" />
                   <h4 className="text-xs font-mono uppercase tracking-wider text-emerald font-semibold">
-                    Completed Queue ({reviews.filter(r => r.status === 'completed' || r.status === 'failed').length})
+                    Completed Queue ({reviews.filter(r => r.status === 'completed').length})
                   </h4>
                 </div>
-                {reviews.filter(r => r.status === 'completed' || r.status === 'failed').length === 0 ? (
-                  <p className="text-xs text-on-surface-variant italic">No reviews completed yet.</p>
+                {reviews.filter(r => r.status === 'completed').length === 0 ? (
+                  <p className="text-xs text-on-surface-variant italic">No completed reviews yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {reviews
-                      .filter(r => r.status === 'completed' || r.status === 'failed')
+                      .filter(r => r.status === 'completed')
                       .map(review => (
                         <div 
                           key={review.id} 
@@ -330,11 +355,7 @@ const Commits = () => {
                           }}
                           className={cn(
                             "bg-charcoal border rounded-sm p-4 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer",
-                            activeReviewId === review.id 
-                              ? (review.status === 'failed' 
-                                  ? "border-rose bg-rose/5 ring-1 ring-rose/35" 
-                                  : "border-emerald bg-emerald/5 ring-1 ring-emerald/35")
-                              : "border-border-primary hover:border-border-primary/80 hover:bg-charcoal/80"
+                            activeReviewId === review.id ? "border-emerald bg-emerald/5 ring-1 ring-emerald/35" : "border-border-primary hover:border-border-primary/80 hover:bg-charcoal/80"
                           )}
                         >
                           <div className="space-y-1 min-w-0">
@@ -347,16 +368,12 @@ const Commits = () => {
                                   PR #{review.pr_number}
                                 </span>
                               )}
-                              <span className={cn(
-                                "text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border",
-                                review.status === 'completed' && "bg-emerald/10 border-emerald/20 text-emerald",
-                                review.status === 'failed' && "bg-rose/10 border-rose/20 text-rose"
-                              )}>
+                              <span className="text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border bg-emerald/10 border-emerald/20 text-emerald">
                                 {review.status}
                               </span>
                             </div>
                             <p className="text-body-sm font-sans font-medium text-on-surface line-clamp-2 mt-1">
-                              {review.summary || (review.status === 'failed' ? "AI review session aborted due to analysis failure." : "AI analysis successfully complete.")}
+                              {review.summary || "AI analysis successfully complete."}
                             </p>
                             <div className="text-[10px] text-on-surface-variant font-mono">
                               Reviewed: {new Date(review.created_at).toLocaleString()}
@@ -377,6 +394,73 @@ const Commits = () => {
                               <ShieldCheck size={18} className={cn(
                                 review.comments && review.comments.length > 0 ? "text-amber" : "text-emerald"
                               )} />
+                              <span className="text-[9px] font-mono block mt-1">{(review.comments || []).length} Findings</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* State 3: Failed Queue */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border-b border-border-primary pb-2">
+                  <span className="w-2 h-2 bg-rose rounded-full" />
+                  <h4 className="text-xs font-mono uppercase tracking-wider text-rose font-semibold">
+                    Failed Queue ({reviews.filter(r => r.status === 'failed').length})
+                  </h4>
+                </div>
+                {reviews.filter(r => r.status === 'failed').length === 0 ? (
+                  <p className="text-xs text-on-surface-variant italic">No failed reviews.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {reviews
+                      .filter(r => r.status === 'failed')
+                      .map(review => (
+                        <div 
+                          key={review.id} 
+                          onClick={() => {
+                            setActiveReviewId(review.id);
+                            setThinkingLog(review.thinking_log || []);
+                            setStreamStatus(review.status);
+                            setStreamSummary(review.summary || '');
+                            setStreamRiskScore(review.risk_score !== undefined ? review.risk_score : null);
+                          }}
+                          className={cn(
+                            "bg-charcoal border rounded-sm p-4 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer",
+                            activeReviewId === review.id ? "border-rose bg-rose/5 ring-1 ring-rose/35" : "border-border-primary hover:border-border-primary/80 hover:bg-charcoal/80"
+                          )}
+                        >
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono text-xs font-semibold text-primary bg-obsidian border border-border-primary px-2 py-0.5 rounded-sm">
+                                {review.commit_sha.substring(0, 7)}
+                              </span>
+                              {review.pr_number && (
+                                <span className="text-[10px] text-linear-purple bg-linear-purple/10 border border-linear-purple/20 px-1.5 py-0.5 rounded-full font-semibold">
+                                  PR #{review.pr_number}
+                                </span>
+                              )}
+                              <span className="text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full border bg-rose/10 border-rose/20 text-rose">
+                                {review.status}
+                              </span>
+                            </div>
+                            <p className="text-body-sm font-sans font-medium text-on-surface line-clamp-2 mt-1">
+                              {review.summary || "AI review session aborted due to analysis failure."}
+                            </p>
+                            <div className="text-[10px] text-on-surface-variant font-mono">
+                              Reviewed: {new Date(review.created_at).toLocaleString()}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 shrink-0 border-l border-border-primary pl-4">
+                            <div className="text-right">
+                              <p className="text-[9px] font-mono uppercase tracking-wider text-on-surface-variant">Risk Score</p>
+                              <h4 className="text-xl font-bold font-mono text-rose">-</h4>
+                            </div>
+                            <div className="text-center bg-obsidian border border-border-primary rounded-sm p-2">
+                              <ShieldCheck size={18} className="text-rose" />
                               <span className="text-[9px] font-mono block mt-1">{(review.comments || []).length} Findings</span>
                             </div>
                           </div>
@@ -591,4 +675,4 @@ const Commits = () => {
   );
 };
 
-export default Commits;
+export default Reviews;

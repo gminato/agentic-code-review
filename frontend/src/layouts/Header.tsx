@@ -115,7 +115,7 @@ export const Header = () => {
           <input 
             type="text" 
             ref={searchInputRef}
-            placeholder="Search repositories, commits..." 
+            placeholder="Search repositories, reviews..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => { if (searchQuery.trim()) setIsSearchOpen(true); }}
@@ -186,7 +186,7 @@ export const Header = () => {
                 {searchResults.reviews.length > 0 && (
                   <div>
                     <div className="p-2 border-b border-border-primary bg-obsidian/50 text-label-caps text-[9px] text-on-surface-variant font-mono border-t border-border-primary/50">
-                      Commit AI Reviews
+                      AI Code Reviews
                     </div>
                     {searchResults.reviews.map((review: any) => (
                       <button
@@ -195,7 +195,7 @@ export const Header = () => {
                           setSelectedRepositoryId(review.repository_id);
                           setIsSearchOpen(false);
                           setSearchQuery('');
-                          navigate('/commits');
+                          navigate('/reviews');
                         }}
                         className="w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-floating transition-colors border-b border-border-primary/30 last:border-b-0 group"
                       >

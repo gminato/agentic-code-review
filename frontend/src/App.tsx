@@ -3,7 +3,7 @@ import { MainLayout } from './layouts/MainLayout';
 import { useAuthStore } from './store/authStore';
 import Dashboard from './pages/Dashboard';
 import Repositories from './pages/Repositories';
-import Commits from './pages/Commits';
+import Reviews from './pages/Reviews';
 import PullRequests from './pages/PullRequests';
 import Agents from './pages/Agents';
 import Cron from './pages/Cron';
@@ -42,7 +42,7 @@ function App() {
         
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/repositories" element={<ProtectedRoute><Repositories /></ProtectedRoute>} />
-        <Route path="/commits" element={<ProtectedRoute><Commits /></ProtectedRoute>} />
+        <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
         <Route path="/pull-requests" element={<ProtectedRoute><PullRequests /></ProtectedRoute>} />
         <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
         <Route path="/cron" element={<ProtectedRoute><Cron /></ProtectedRoute>} />

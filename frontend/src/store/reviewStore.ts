@@ -9,6 +9,7 @@ interface ReviewState {
   fetchReviews: (repositoryId?: number) => Promise<void>;
   fetchReview: (id: number) => Promise<void>;
   runReview: (data: { repository_id: number; commit_sha: string; base_sha: string; pr_number?: number }) => Promise<Review>;
+  deleteReview: (id: number) => Promise<void>;
 }
 
 export const useReviewStore = create<ReviewState>((set) => ({
@@ -46,6 +47,20 @@ export const useReviewStore = create<ReviewState>((set) => ({
       return newReview;
     } catch (error) {
       set({ error: 'Failed to trigger review', isLoading: false });
+      throw error;
+    }
+  },
+  deleteReview: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      await reviewsApi.delete(id);
+      set((state) => ({
+        reviews: state.reviews.filter((r) => r.id !== id),
+        currentReview: state.currentReview?.id === id ? null : state.currentReview,
+        isLoading: false
+      }));
+    } catch (error) {
+      set({ error: 'Failed to delete review', isLoading: false });
       throw error;
     }
   },

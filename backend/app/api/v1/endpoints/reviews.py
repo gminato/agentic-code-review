@@ -78,3 +78,18 @@ async def get_review(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     return review
+
+@router.delete("/{review_id}", status_code=204)
+async def delete_review(
+    review_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(deps.get_current_user)
+):
+    result = await db.execute(select(ReviewModel).where(ReviewModel.id == review_id))
+    review = result.scalars().first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    
+    await db.delete(review)
+    await db.commit()
+    return None

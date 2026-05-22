@@ -223,7 +223,7 @@ const Dashboard = () => {
               reviews.slice(0, 5).map((review) => (
                 <div 
                   key={review.id} 
-                  onClick={() => navigate('/commits')}
+                  onClick={() => navigate('/reviews')}
                   className="p-3 hover:bg-floating/30 transition-colors group cursor-pointer border-l-2 border-transparent hover:border-vercel-blue"
                 >
                   <div className="flex items-start gap-3">
@@ -259,7 +259,7 @@ const Dashboard = () => {
             )}
           </div>
           <button 
-            onClick={() => navigate('/commits')}
+            onClick={() => navigate('/reviews')}
             className="p-2 border-t border-border-primary text-label-caps text-primary hover:bg-floating transition-colors text-[9px] tracking-[0.1em] cursor-pointer"
           >
             View all logs

@@ -36,4 +36,5 @@ export const reviewsApi = {
   list: (repositoryId?: number) => 
     apiClient.get<Review[]>('/reviews/', { params: { repository_id: repositoryId } }),
   get: (id: number) => apiClient.get<Review>(`/reviews/${id}`),
+  delete: (id: number) => apiClient.delete<void>(`/reviews/${id}`),
 };

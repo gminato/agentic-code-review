@@ -82,7 +82,7 @@ export const Sidebar = () => {
 
       <div className='flex-1 overflow-y-auto py-4 space-y-1'>
         <SidebarItem to='/dashboard' icon={<LayoutDashboard size={18} />} label='Dashboard' collapsed={collapsed} />
-        <SidebarItem to='/commits' icon={<GitCommit size={18} />} label='Commits' collapsed={collapsed} />
+        <SidebarItem to='/reviews' icon={<GitCommit size={18} />} label='Review' collapsed={collapsed} />
         <SidebarItem to='/pull-requests' icon={<GitPullRequest size={18} />} label='Pull Requests' collapsed={collapsed} />
         <SidebarItem to='/agents' icon={<Bot size={18} />} label='Agents' collapsed={collapsed} />
         <SidebarItem to='/cron' icon={<Clock size={18} />} label='Cron Jobs' collapsed={collapsed} />
