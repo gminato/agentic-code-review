@@ -110,12 +110,16 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
                     if clean_line < 1:
                         clean_line = 1
 
+                    # Prepend the active AI model name as the comment author
+                    model_name = getattr(orchestrator.provider, "model", "AI Reviewer")
+                    comment_with_author = f"**[{model_name}]** {finding['comment']}"
+
                     comment = ReviewComment(
                         review_id=review.id,
                         file_path=finding["file_path"],
                         line_number=clean_line,
                         severity=finding["severity"],
-                        comment=finding["comment"]
+                        comment=comment_with_author
                     )
                     db.add(comment)
                     
@@ -128,7 +132,7 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
                             commit_sha,
                             finding["file_path"],
                             clean_line,
-                            finding["comment"]
+                            comment_with_author
                         )
                     except Exception as e:
                         logger.warning("github_post_comment_failed", error=str(e), review_id=review.id)
