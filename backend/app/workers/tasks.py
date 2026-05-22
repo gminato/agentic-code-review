@@ -97,10 +97,23 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
                 # Store Findings
                 await on_thinking("System", "running", f"Writing {len(findings)} findings to database and posting comments to GitHub...")
                 for finding in findings:
+                    # Safely parse and sanitize line_number to avoid DataError (e.g. 'All', 'N/A')
+                    raw_line = finding.get("line_number")
+                    clean_line = 1
+                    if raw_line is not None:
+                        try:
+                            # Parse string decimals or float values to integer
+                            clean_line = int(float(str(raw_line).strip()))
+                        except (ValueError, TypeError):
+                            clean_line = 1
+                    
+                    if clean_line < 1:
+                        clean_line = 1
+
                     comment = ReviewComment(
                         review_id=review.id,
                         file_path=finding["file_path"],
-                        line_number=finding["line_number"],
+                        line_number=clean_line,
                         severity=finding["severity"],
                         comment=finding["comment"]
                     )
@@ -114,7 +127,7 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
                             pr_number,
                             commit_sha,
                             finding["file_path"],
-                            finding["line_number"],
+                            clean_line,
                             finding["comment"]
                         )
                     except Exception as e:
