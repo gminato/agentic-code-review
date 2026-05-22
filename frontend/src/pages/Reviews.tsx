@@ -51,7 +51,7 @@ const Reviews = () => {
   const [streamStatus, setStreamStatus] = useState<string>('idle');
   const [streamSummary, setStreamSummary] = useState<string>('');
   const [streamRiskScore, setStreamRiskScore] = useState<number | null>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedRepositoryId) {
@@ -130,9 +130,14 @@ const Reviews = () => {
     };
   }, [activeReviewId, token, fetchReviews, selectedRepositoryId, reviews]);
 
-  // Auto-scroll logs to bottom
+  // Auto-scroll logs to bottom inside the log container only
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTo({
+        top: logContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [thinkingLog]);
 
   const handleManualReview = async (e: React.FormEvent) => {
@@ -537,7 +542,10 @@ const Reviews = () => {
                 <h4 className="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant">
                   Live Agent Reasonings
                 </h4>
-                <div className="h-[280px] overflow-y-auto bg-charcoal/30 border border-border-primary/60 rounded-sm p-3 font-mono text-[11px] leading-relaxed space-y-3 custom-scrollbar">
+                <div 
+                  ref={logContainerRef}
+                  className="h-[280px] overflow-y-auto bg-charcoal/30 border border-border-primary/60 rounded-sm p-3 font-mono text-[11px] leading-relaxed space-y-3 custom-scrollbar"
+                >
                   {thinkingLog.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center text-on-surface-variant space-y-2">
                       <Loader2 className="animate-spin text-vercel-blue" size={20} />
@@ -576,7 +584,6 @@ const Reviews = () => {
                       </div>
                     ))
                   )}
-                  <div ref={logEndRef} />
                 </div>
               </div>
 
