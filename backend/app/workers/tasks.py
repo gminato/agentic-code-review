@@ -97,12 +97,29 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
                 # Store Findings
                 await on_thinking("System", "running", f"Writing {len(findings)} findings to database and posting comments to GitHub...")
                 for finding in findings:
+                    # Safely parse and sanitize line_number to avoid DataError (e.g. 'All', 'N/A')
+                    raw_line = finding.get("line_number")
+                    clean_line = 1
+                    if raw_line is not None:
+                        try:
+                            # Parse string decimals or float values to integer
+                            clean_line = int(float(str(raw_line).strip()))
+                        except (ValueError, TypeError):
+                            clean_line = 1
+                    
+                    if clean_line < 1:
+                        clean_line = 1
+
+                    # Prepend the active AI model name as the comment author
+                    model_name = getattr(orchestrator.provider, "model", "AI Reviewer")
+                    comment_with_author = f"**[{model_name}]** {finding['comment']}"
+
                     comment = ReviewComment(
                         review_id=review.id,
                         file_path=finding["file_path"],
-                        line_number=finding["line_number"],
+                        line_number=clean_line,
                         severity=finding["severity"],
-                        comment=finding["comment"]
+                        comment=comment_with_author
                     )
                     db.add(comment)
                     
@@ -114,8 +131,8 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
                             pr_number,
                             commit_sha,
                             finding["file_path"],
-                            finding["line_number"],
-                            finding["comment"]
+                            clean_line,
+                            comment_with_author
                         )
                     except Exception as e:
                         logger.warning("github_post_comment_failed", error=str(e), review_id=review.id)
@@ -123,11 +140,30 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
                 # Generate Summary
                 summary = await orchestrator.generate_summary(findings, on_thinking=on_thinking)
                 
-                # Calculate Risk Score
-                severity_weights = {"low": 1, "medium": 3, "high": 7, "critical": 10}
+                # Calculate Risk Score with Severity Caps
+                severity_caps = {"low": 2.0, "medium": 5.0, "high": 8.0, "critical": 10.0}
+                severity_weights = {"low": 1.0, "medium": 3.0, "high": 7.0, "critical": 10.0}
+                
                 if findings:
-                    total_weight = sum(severity_weights.get(f["severity"].lower(), 1) for f in findings)
-                    calculated_score = min(10.0, total_weight / 2.0)
+                    highest_severity = "low"
+                    total_weight = 0.0
+                    for f in findings:
+                        sev = f["severity"].lower()
+                        if sev not in severity_weights:
+                            sev = "low"
+                        total_weight += severity_weights[sev]
+                        
+                        # Keep track of the highest severity found
+                        if sev == "critical":
+                            highest_severity = "critical"
+                        elif sev == "high" and highest_severity != "critical":
+                            highest_severity = "high"
+                        elif sev == "medium" and highest_severity not in ("critical", "high"):
+                            highest_severity = "medium"
+                    
+                    # Apply a cap based on the highest severity present
+                    cap = severity_caps[highest_severity]
+                    calculated_score = min(cap, total_weight / 2.0)
                 else:
                     calculated_score = 0.0
                 
