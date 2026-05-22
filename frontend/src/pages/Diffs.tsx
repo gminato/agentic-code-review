@@ -48,9 +48,11 @@ export const Diffs = () => {
     // If navigated from PR list with a specific PR number
     const state = location.state as { prNumber?: number } | null;
     if (state?.prNumber) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPrNumber(state.prNumber);
     } else if (pullRequests.length > 0 && selectedPrNumber === null) {
       // Default to first open PR
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPrNumber(pullRequests[0].number);
     }
   }, [pullRequests, location.state, selectedPrNumber]);
@@ -69,6 +71,7 @@ export const Diffs = () => {
           setSelectedFilename('');
         }
       } catch (err) {
+        console.error(err);
         toast.error('Failed to load pull request files');
         setFiles([]);
         setSelectedFilename('');
