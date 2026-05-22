@@ -22,6 +22,7 @@ import {
 import { cn } from '../utils/cn';
 import { toast } from 'sonner';
 import type { ThinkingStep } from '../api/reviews';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
 const Reviews = () => {
   const { selectedRepositoryId, repositories } = useRepositoryStore();
@@ -606,9 +607,9 @@ const Reviews = () => {
                     </div>
                   </div>
                   {streamSummary && (
-                    <p className="text-[10.5px] font-sans text-on-surface/90 italic leading-relaxed border-l-2 border-emerald pl-2 py-0.5">
-                      "{streamSummary}"
-                    </p>
+                    <div className="border-l-2 border-emerald pl-3 py-0.5">
+                      <MarkdownRenderer content={streamSummary} />
+                    </div>
                   )}
                 </div>
               )}
@@ -624,8 +625,8 @@ const Reviews = () => {
                     <AlertTriangle size={18} className="text-rose animate-bounce shrink-0" />
                   </div>
                   {streamSummary && (
-                    <div className="text-[11px] font-mono text-rose-300 leading-relaxed border-l-2 border-rose pl-2 py-1 bg-rose/10 rounded-r-sm p-2 overflow-x-auto select-text break-words">
-                      {streamSummary}
+                    <div className="text-[11px] leading-relaxed border-l-2 border-rose pl-3 py-1 bg-rose/10 rounded-r-sm p-2 overflow-x-auto select-text break-words">
+                      <MarkdownRenderer content={streamSummary} className="text-rose-200" />
                     </div>
                   )}
                   <p className="text-[10px] text-on-surface-variant italic leading-normal">
