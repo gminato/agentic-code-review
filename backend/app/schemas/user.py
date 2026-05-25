@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
     avatar_url: Optional[str] = None
+    llm_config: Optional[dict] = None
 
 class UserCreate(UserBase):
     github_id: int

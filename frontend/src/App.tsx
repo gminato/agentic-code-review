@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
 import { useAuthStore } from './store/authStore';
@@ -9,6 +10,7 @@ import Diffs from './pages/Diffs';
 import Agents from './pages/Agents';
 import Cron from './pages/Cron';
 import Settings from './pages/Settings';
+import LLMConfig from './pages/LLMConfig';
 import Login from './pages/Login';
 import OAuthCallback from './pages/OAuthCallback';
 import { Toaster } from 'sonner';
@@ -34,6 +36,14 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  const { isAuthenticated, token, fetchMe } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchMe();
+    }
+  }, [isAuthenticated, token, fetchMe]);
+
   return (
     <Router>
       <Toaster theme="dark" position="bottom-right" closeButton />
@@ -48,6 +58,7 @@ function App() {
         <Route path="/diff" element={<ProtectedRoute><Diffs /></ProtectedRoute>} />
         <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
         <Route path="/cron" element={<ProtectedRoute><Cron /></ProtectedRoute>} />
+        <Route path="/llm-config" element={<ProtectedRoute><LLMConfig /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

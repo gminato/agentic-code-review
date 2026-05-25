@@ -7,6 +7,7 @@ import {
   Eye,
   Bot, 
   Clock, 
+  Cpu,
   Settings, 
   LogOut,
   ChevronLeft,
@@ -88,6 +89,7 @@ export const Sidebar = () => {
         <SidebarItem to='/diff' icon={<Eye size={18} />} label='Diff' collapsed={collapsed} />
         <SidebarItem to='/agents' icon={<Bot size={18} />} label='Agents' collapsed={collapsed} />
         <SidebarItem to='/cron' icon={<Clock size={18} />} label='Cron Jobs' collapsed={collapsed} />
+        <SidebarItem to='/llm-config' icon={<Cpu size={18} />} label='LLM Config' collapsed={collapsed} />
       </div>
 
       <div className='mt-auto border-t border-border-primary py-2'>

@@ -3,23 +3,24 @@ import { useAgentStore } from '../store/agentStore';
 import { useRepositoryStore } from '../store/repositoryStore';
 import { Bot, Plus, Trash2, Edit2, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { settingsApi } from '../api/settings';
 
 const PRESETS = [
   {
     name: 'Security Auditor',
-    model: 'claude-3-5-sonnet',
+    model: 'anthropic/claude-3.5-sonnet',
     prompt: 'You are a Senior Security Engineer. Analyze the incoming diffs for common vulnerabilities, including injection flaws, authentication bypasses, cryptographic missteps, credential leaks, and OWASP Top 10 vulnerabilities. Rate severity as High, Medium, or Low and suggest clean, remediated code snippets.',
     config_json: { severity_threshold: 'Medium', auto_reject_pr: false }
   },
   {
     name: 'Performance Profiler',
-    model: 'gpt-4o',
+    model: 'openai/gpt-4o',
     prompt: 'You are a Lead Systems Architect. Inspect these code changes for runtime bottlenecks, memory leaks, high time-complexity algorithms, unindexed database queries, redundant network requests, or excessive asset sizes. Suggest optimal, optimized implementations.',
     config_json: { max_loop_depth: 3, flag_nested_loops: true }
   },
   {
     name: 'Clean Code Stylist',
-    model: 'gemini-1.5-pro',
+    model: 'google/gemini-flash-1.5',
     prompt: 'You are a meticulous Code Quality Lead. Review these files to ensure they conform to enterprise coding guidelines, standard naming conventions, proper architectural design patterns, modular code structures, comprehensive JSDoc/docstring documentation, and high testability.',
     config_json: { check_naming_conventions: true, enforce_strict_typescript: true }
   }
@@ -34,13 +35,30 @@ export default function Agents() {
   
   // Form State
   const [name, setName] = useState('');
-  const [model, setModel] = useState('claude-3-5-sonnet');
+  const [model, setModel] = useState('use-global-default');
+  const [customModel, setCustomModel] = useState('');
+  const [isCustomModel, setIsCustomModel] = useState(false);
   const [promptText, setPromptText] = useState('');
   const [configStr, setConfigStr] = useState('{}');
   const [enabled, setEnabled] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedRepo = repositories.find(r => r.id === selectedRepositoryId);
+  const [globalModel, setGlobalModel] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchGlobalConfig = async () => {
+      try {
+        const response = await settingsApi.getLLMConfig();
+        if (response.data && response.data.model) {
+          setGlobalModel(response.data.model);
+        }
+      } catch (e) {
+        console.error('Failed to load global LLM config:', e);
+      }
+    };
+    fetchGlobalConfig();
+  }, []);
 
   useEffect(() => {
     if (selectedRepositoryId) {
@@ -50,7 +68,9 @@ export default function Agents() {
 
   const resetForm = () => {
     setName('');
-    setModel('claude-3-5-sonnet');
+    setModel('use-global-default');
+    setCustomModel('');
+    setIsCustomModel(false);
     setPromptText('');
     setConfigStr('{}');
     setEnabled(true);
@@ -64,7 +84,16 @@ export default function Agents() {
 
   const handleOpenEdit = (agent: any) => {
     setName(agent.name);
-    setModel(agent.model);
+    const predefined = ['use-global-default', 'anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'google/gemini-flash-1.5', 'meta-llama/llama-3-70b-instruct'].includes(agent.model);
+    if (predefined) {
+      setModel(agent.model);
+      setIsCustomModel(false);
+      setCustomModel('');
+    } else {
+      setModel('custom');
+      setIsCustomModel(true);
+      setCustomModel(agent.model);
+    }
     setPromptText(agent.prompt);
     setConfigStr(JSON.stringify(agent.config_json || {}, null, 2));
     setEnabled(agent.enabled);
@@ -74,7 +103,18 @@ export default function Agents() {
 
   const handleLoadPreset = (preset: typeof PRESETS[0]) => {
     setName(preset.name);
-    setModel(preset.model);
+    
+    const predefined = ['use-global-default', 'anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'google/gemini-flash-1.5', 'meta-llama/llama-3-70b-instruct'].includes(preset.model);
+    if (predefined) {
+      setModel(preset.model);
+      setIsCustomModel(false);
+      setCustomModel('');
+    } else {
+      setModel('custom');
+      setIsCustomModel(true);
+      setCustomModel(preset.model);
+    }
+
     setPromptText(preset.prompt);
     setConfigStr(JSON.stringify(preset.config_json, null, 2));
     toast.success(`Loaded preset: ${preset.name}`);
@@ -84,6 +124,12 @@ export default function Agents() {
     e.preventDefault();
     if (!selectedRepositoryId) {
       toast.error('No repository selected');
+      return;
+    }
+
+    const finalModel = isCustomModel ? customModel.trim() : model;
+    if (isCustomModel && !finalModel) {
+      toast.error('Please specify a custom OpenRouter model identifier');
       return;
     }
 
@@ -100,7 +146,7 @@ export default function Agents() {
       if (editingAgentId !== null) {
         await updateAgent(editingAgentId, {
           name,
-          model,
+          model: finalModel,
           prompt: promptText,
           config_json: parsedConfig,
           enabled
@@ -109,11 +155,11 @@ export default function Agents() {
       } else {
         await createAgent({
           repository_id: selectedRepositoryId,
-          name,
-          model,
+          name: name,
+          model: finalModel,
           prompt: promptText,
           config_json: parsedConfig,
-          enabled
+          enabled: enabled
         });
         toast.success('Agent created successfully');
       }
@@ -374,14 +420,40 @@ export default function Agents() {
                 </label>
                 <select
                   value={model}
-                  onChange={(e) => setModel(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setModel(val);
+                    if (val === 'custom') {
+                      setIsCustomModel(true);
+                    } else {
+                      setIsCustomModel(false);
+                    }
+                  }}
                   className="w-full bg-obsidian border border-border-primary rounded-sm py-1.5 px-3 text-code-sm focus:outline-none focus:border-vercel-blue text-on-surface font-mono"
                 >
-                  <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (Recommended)</option>
-                  <option value="gpt-4o">GPT-4o (High Speed)</option>
-                  <option value="gemini-1.5-pro">Gemini 1.5 Pro (Deep Context)</option>
-                  <option value="llama-3-70b">Llama 3 70B (Open Engine)</option>
+                  <option value="use-global-default">Use Global Default {globalModel ? `(${globalModel})` : '(from LLM Config)'}</option>
+                  <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (Recommended)</option>
+                  <option value="openai/gpt-4o">GPT-4o (High Speed)</option>
+                  <option value="openai/gpt-4o-mini">GPT-4o Mini (Cost-Effective)</option>
+                  <option value="google/gemini-flash-1.5">Gemini 1.5 Flash (Large Context)</option>
+                  <option value="meta-llama/llama-3-70b-instruct">Llama 3 70B (Open Engine)</option>
+                  <option value="custom">Custom OpenRouter Model ID...</option>
                 </select>
+                {isCustomModel && (
+                  <div className="space-y-1 mt-2 p-2 bg-obsidian border border-border-primary rounded-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-[8px] font-mono text-vercel-blue uppercase tracking-wider block">
+                      Custom OpenRouter Model ID
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. deepseek/deepseek-chat"
+                      value={customModel}
+                      onChange={(e) => setCustomModel(e.target.value)}
+                      className="w-full bg-charcoal border border-border-primary rounded-sm py-1 px-2.5 text-code-sm focus:outline-none focus:border-vercel-blue text-on-surface font-mono"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

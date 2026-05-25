@@ -7,6 +7,8 @@ from app.services.github_app import github_app_service
 from app.services.ai.orchestrator import ReviewOrchestrator
 from sqlalchemy import select
 import app.db.base  # Ensures all models are registered for SQLAlchemy relationships
+from app.models.user import User
+from app.models.agent import Agent as AgentModel
 
 from app.core.logging import logger
 from app.core.exceptions import AppError
@@ -90,8 +92,19 @@ async def _process_review(repo_id: int, pr_number: int, commit_sha: str, base_sh
 
                 await on_thinking("System", "completed", "Successfully retrieved and parsed commit diff.")
 
+                # Fetch active agents for this repository
+                agents_result = await db.execute(
+                    select(AgentModel).where(AgentModel.repository_id == repo.id, AgentModel.enabled == True)
+                )
+                db_agents = agents_result.scalars().all()
+
+                # Fetch user's LLM configuration
+                user_result = await db.execute(select(User).order_by(User.id.asc()))
+                user = user_result.scalars().first()
+                llm_config = user.llm_config if user else None
+
                 # Run Orchestrator
-                orchestrator = ReviewOrchestrator()
+                orchestrator = ReviewOrchestrator(llm_config=llm_config, db_agents=db_agents)
                 findings = await orchestrator.run_review(diff, on_thinking=on_thinking)
                 
                 # Store Findings
